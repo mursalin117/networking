@@ -12,7 +12,6 @@ public class Server {
   public Scanner sc = new Scanner(System.in);
 
   public Server() {
-
     try {
       ss = new ServerSocket(6666); // socket for creating server
       System.out.println("Server is waiting...");
@@ -25,20 +24,16 @@ public class Server {
       while (true) {
         str1 = (String) din.readUTF(); // input stream in unicode form
         System.out.println("client : " + str1); // showing the message
-        //StringTokenizer st = new StringTokenizer(str1, " ");
-        //System.out.print("me(server) : ");
-        //str2 = sc.nextLine();
-        //strTemp = st.nextToken();
+
         if (str1.equals("stop")) {
           break;
         }
 
         else if (str1.equals("ls")) {
-
           File curDir = new File(".");
-          getAllFiles(curDir);
-
-          //System.out.println("ls nai");
+          getListFiles(curDir);
+          dout.writeUTF(" ");
+          dout.flush();
         }
 
         else if (str1.equals("stop")) {
@@ -46,146 +41,17 @@ public class Server {
         }
 
         else if (str1.equals("mkdir")) {
-
           dirName = (String) din.readUTF();
-
-          File dir = new File(dirName);
-
-          if (dir.isDirectory()) {
-            dout.writeUTF("Directory already exists. Do you want to replace it? (y/n)");
-            dout.flush();
-
-            option = (String) din.readUTF();
-          }
-          else {
-            option = "y";
-            dout.writeUTF("Ready");
-            dout.flush();
-          }
-
-          if (option.equals("y") && dir.mkdirs()) {
-            System.out.println("Directory is created!!!");
-            dout.writeUTF("Directory is created!!!");
-            dout.flush();
-          }
-          else {
-            System.out.println("Directory is not created!!!");
-            dout.writeUTF("Directory is not created!!!");
-            dout.flush();
-          }
-          //System.out.println("mkdir hobe na");
+          createDirectory(dirName);
         }
 
         else if (str1.equals("upload")) { // upload option
-
-          // getting the argument from client
-          strTemp = (String) din.readUTF();
-
-          // checking the client's argument
-          if (strTemp.equals("File is not found!!!")) { // if the file doesn't exists
-            System.out.println(strTemp + "\nFile could not be uploaded..."); // console output for server
-            continue; // nothing to do
-          }
-          else { // if the file exists
-            // getting the file name which will be uploaded to the server
-            fileName = (String) din.readUTF(); // file name
-            File file = new File(fileName); // creating new file
-
-            if (file.exists()) { // if the file already exists in the server
-              dout.writeUTF("File already exits. Do you want to rewrite it? (y/n)"); // asking for the opinion of the client
-              dout.flush(); // instantly
-
-              option = din.readUTF(); // taking the opinion of the client
-            }
-            else {
-              option = "y";
-            }
-
-            if (option.equals("y")) { // if the opinion is 'y', the procedure of further working
-              dout.writeUTF("Ready"); // sending ok flag to client
-              dout.flush(); // instantly
-
-              FileOutputStream fout = new FileOutputStream(file); // FileOutputStream instialization
-              strTemp = (String) din.readUTF(); // getting the size of the file in sring form
-              int size = Integer.parseInt(strTemp); // parsing the size in the integer form
-              byte[] bytes = new byte[size]; // byte argument for the file
-
-              // file receiving procedure
-              din.read(bytes, 0, size); // reading the file using the DataInputStream
-              fout.write(bytes, 0, size); // writing the file data of byte form using the FileOutputStream
-
-              // another way of file receiving for large size file specially
-              //int count;
-              //while ((count = din.read(bytes)) != -1) {
-                //fout.write(bytes, 0, size);
-              //}
-
-              fout.close(); // closing the FileOutputStream
-              //din.close();
-
-              System.out.println("File uploaded successfully"); // console output for the server
-              continue;
-            }
-            else { // if the option is = 'n' or anything else
-              // file will not be uploaded
-              System.out.println("File is not uploaded!!!"); // server console output
-              dout.writeUTF("File is not uploaded!!!"); // client console oupput sending
-              dout.flush(); // instantly
-              continue; // nothing to do any more
-            }
-          }
+          receiveFile();
         }
 
         else if (str1.equals("download")) {
-
           fileName = (String) din.readUTF();
-          File file = new File(fileName);
-
-          if (!file.exists()) {
-            System.out.println("File doesn't exists!!!");
-            dout.writeUTF("File doesn't exists!!!");
-            dout.flush();
-            continue;
-          }
-          else {
-            dout.writeUTF("Ready");
-            dout.flush();
-
-            strTemp = (String) din.readUTF();
-            if (strTemp.equals("Ready")) {
-              // when the option is 'y', the procedure
-
-              int size = (int) file.length(); // file size
-              dout.writeUTF(Integer.toString(size)); // file size sending
-
-              byte[] bytes = new byte[size]; // byte stream for the file
-              FileInputStream fin = new FileInputStream(file); // FileInputStream initialization
-
-              // sending files
-              fin.read(bytes, 0, size); // file reading using FileInputStream
-              dout.write(bytes, 0, size); // sending the file using socket
-              dout.flush(); // instantly sending
-
-              // another way of sending file, specially for the large size
-              // try both the way....
-              //int count;
-              //while ((count = fin.read(bytes)) != -1) {
-                //dout.write(bytes, 0, size);
-              //}
-
-              //dout.close();
-              fin.close(); // closing FileInputStream
-
-              //dout.writeUTF("File uploaded successfully!!!");
-              //dout.flush();
-              System.out.println("File was downloaded sucessful!!!"); // console shwoing
-            }
-            else {
-              System.out.println(strTemp);
-              continue;
-            }
-          }
-          //System.out.println("Download kora jabe na");
+          sendFile(fileName);
         }
 
         else {
@@ -194,7 +60,7 @@ public class Server {
         }
       }
 
-      System.out.println("Client is disconnected!!\n\nServer is closing!!!");
+      System.out.println("client : Client is disconnected!!\nserver(me) : Server is closing!!!");
       dout.close(); // closing the oupput stream
       s.close(); // socket closing
       ss.close(); // closing the server Socket
@@ -204,34 +70,178 @@ public class Server {
     }
   }
 
-  public static void getAllFiles(File curDir) {
-
-    File[] filesList = curDir.listFiles();
-    for (File f : filesList) {
-      if (f.isDirectory()) {
-        System.out.println(f.getPath() + "  ___  " + f.getName() + "/");
-        getAllFiles(f);
+  public void getListFiles(File curDir) {
+    try {
+      File[] filesList = curDir.listFiles();
+      for (File file : filesList) {
+        if (file.isDirectory()) {
+          //System.out.println(file.getPath() + "/");
+          dout.writeUTF(file.getPath() + "/");
+          dout.flush();
+          getListFiles(file);
+        }
+        if(file.isFile()) {
+          //System.out.println(file.getPath() + "----> " + file.getName());
+          dout.writeUTF(file.getPath() + "----> " + file.getName());
+          dout.flush();
+        }
       }
-      if(f.isFile()) {
-        System.out.println(f.getPath() + "----> " + f.getName());
-      }
+    } catch(Exception e) {
+      System.out.println("Somethng went wrong...\n" + e);
     }
   }
 
-  public static void receiveFile() {
+  public void receiveFile() {
 
+    try {
+      strTemp = (String) din.readUTF();
+      if (strTemp.equals("File is not found.")) {
+        System.out.println("client : " + strTemp + "\nFile is not uploaded...");
+      }
+      else {
+        System.out.println("Uploading File name = " + strTemp);
+        fileName = strTemp;
+        File file = new File(fileName);
+
+        if (file.exists()) {
+          dout.writeUTF("File already exists. Do you want to replace it? (y/n)");
+          dout.flush();
+
+          option = (String) din.readUTF();
+          //System.out.println("client : " + option);
+        }
+        else{
+          //dout.writeUTF("Ready");
+          option = "y";
+          // file input nibe....
+        }
+
+        if (option.equals("y")) {
+          dout.writeUTF("Ready");
+          // file nibe....
+          FileOutputStream fout = new FileOutputStream(file); // FileOutputStream instialization
+          strTemp = (String) din.readUTF(); // getting the size of the file in sring form
+          int size = Integer.parseInt(strTemp); // parsing the size in the integer form
+          byte[] bytes = new byte[size]; // byte argument for the file
+
+          // file receiving procedure
+          din.read(bytes, 0, size); // reading the file using the DataInputStream
+          fout.write(bytes, 0, size); // writing the file data of byte form using the FileOutputStream
+
+          // another way of file receiving for large size file specially
+          //int count;
+          //while ((count = din.read(bytes)) != -1) {
+            //fout.write(bytes, 0, count);
+            //System.out.println("Count = " + count);
+          //}
+
+          fout.close(); // closing the FileOutputStream
+          //din.close();
+
+          System.out.println("server(me) : File received successfully"); // console output for the server
+        }
+        else {
+          // nibe na....
+          System.out.println("server(me) : file is not received.");
+          dout.writeUTF("File is not uploaded.");
+          dout.flush();
+        }
+      }
+    } catch(Exception e) {
+      System.out.println("Something went wrong!!!\n" + e);
+    }
   }
 
-  public static void sendFile() {
+  public void sendFile(String fileName) {
+    try {
+      File file = new File(fileName);
 
+      if (!file.exists()) {
+        System.out.println("server(me) : File doesn't exists!!!");
+        dout.writeUTF("File doesn't exists!!!");
+        dout.flush();
+        //return;
+      }
+      else {
+        dout.writeUTF("Ready");
+        dout.flush();
+
+        strTemp = (String) din.readUTF();
+        if (strTemp.equals("Ready")) {
+          // when the option is 'y', the procedure
+
+          int size = (int) file.length(); // file size
+          dout.writeUTF(Integer.toString(size)); // file size sending
+
+          byte[] bytes = new byte[size]; // byte stream for the file
+          FileInputStream fin = new FileInputStream(file); // FileInputStream initialization
+
+          // sending files
+          fin.read(bytes, 0, size); // file reading using FileInputStream
+          dout.write(bytes, 0, size); // sending the file using socket
+          dout.flush(); // instantly sending
+
+          // another way of sending file, specially for the large size
+          // try both the way....
+          //int count;
+          //while ((count = fin.read(bytes)) != -1) {
+            //dout.write(bytes, 0, size);
+          //}
+
+          //dout.close();
+          fin.close(); // closing FileInputStream
+
+          //dout.writeUTF("File uploaded successfully!!!");
+          //dout.flush();
+          System.out.println("server(me) : File was sent successfully!!!"); // console shwoing
+        }
+        else {
+          System.out.println("client : " + strTemp);
+          //return;
+        }
+      }
+      //System.out.println("Download kora jabe na");
+    } catch(Exception e) {
+      System.out.println("Something went wrong!!!\n" + e);
+    }
   }
 
-  public static void createDirectory() {
+  public void createDirectory(String dirName) {
 
-  }
+    try {
+      System.out.println("Creating Directory name = " + dirName);
+      File dir = new File(dirName);
 
-  public static void closeServer(){
+      if (dir.isDirectory()) {
+        dout.writeUTF("Directory already exists. Do you want to replace it? (y/n)");
+        dout.flush();
 
+        option = (String) din.readUTF();
+        if (option.equals("y")) { // if directory already exists then first delet it and recreate it for replace option
+          new File(dirName).delete();
+        }
+      }
+      else {
+        option = "y";
+        dout.writeUTF("Ready");
+        dout.flush();
+      }
+
+      if (option.equals("y") && dir.mkdirs()) {
+        System.out.println("server(me) : Directory is created!!!");
+        dout.writeUTF("Directory is created!!!");
+        dout.flush();
+      }
+      else {
+        System.out.println("server(me) : Directory is not created!!!");
+        dout.writeUTF("Directory is not created!!!");
+        dout.flush();
+      }
+      //System.out.println("mkdir hobe na");
+
+    } catch(Exception e) {
+      System.out.println("Directory is not created.\nSomething went wrong...\n" + e);
+    }
   }
 
   public static void main(String[] args) {
