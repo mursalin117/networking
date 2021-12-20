@@ -1,5 +1,4 @@
 import java.io.DataInputStream;
-import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.net.Socket;
 import java.util.Scanner;

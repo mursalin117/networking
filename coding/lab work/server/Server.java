@@ -7,18 +7,18 @@ import java.net.Socket;
 public class Server {
   public static ServerSocket ss;
   public static Socket s;
-  public static DataInputStream dis;
+  public static DataInputStream din;
   public static DataOutputStream dout;
   public static void main(String[] args) {
     try {
       ss = new ServerSocket(6666);
       s = ss.accept();
       System.out.println("Server is connected!");
-      dis = new DataInputStream(s.getInputStream());
+      din = new DataInputStream(s.getInputStream());
       dout = new DataOutputStream(s.getOutputStream());
       String str;
       while (true) {
-        str = (String) dis.readUTF();
+        str = (String) din.readUTF();
         System.out.println("Client: " + str);
         if (str.equals("stop")) {
           break;
